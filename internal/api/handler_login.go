@@ -3,19 +3,32 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/viyan-md/chirpy/internal/auth"
+	"github.com/viyan-md/chirpy/internal/database"
 	"github.com/viyan-md/chirpy/internal/respond"
 )
 
+type TokenResponse struct {
+	Id           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
+}
+
 func (cfg *APIConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
 
 	type response struct {
-		UserResponse
+		TokenResponse
 	}
 
 	var params parameters
@@ -37,12 +50,22 @@ func (cfg *APIConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := UserResponse{
-		ID:        dbuser.ID,
-		CreatedAt: dbuser.CreatedAt,
-		UpdatedAt: dbuser.UpdatedAt,
-		Email:     dbuser.Email,
+	token, err := auth.MakeJWT(dbuser.ID, cfg.JWTSecret, time.Hour)
+	if err != nil {
+		respond.RespondWithError(w, http.StatusInternalServerError, "couldn't create token", err)
 	}
 
-	respond.RespondWithJSON(w, http.StatusOK, response{user})
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respond.RespondWithError(w, http.StatusInternalServerError, "could not create refresh token", err)
+		return
+	}
+
+	_, err = cfg.DB.AddRefreshToken(r.Context(), database.AddRefreshTokenParams{Token: refreshToken, UserID: dbuser.ID})
+	if err != nil {
+		respond.RespondWithError(w, http.StatusInternalServerError, "could not save refresh token", err)
+		return
+	}
+
+	respond.RespondWithJSON(w, http.StatusOK, response{TokenResponse{Id: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email, Token: token, RefreshToken: refreshToken}})
 }

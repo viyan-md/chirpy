@@ -22,43 +22,41 @@ func (cfg *APIConfig) HandleAddChirp(w http.ResponseWriter, r *http.Request) {
 	const maxLen = 140
 
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type response struct {
 		Chirp
 	}
 
-	params := parameters{}
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&params); err != nil {
-		respond.RespondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+	uid, ok := r.Context().Value("userID").(uuid.UUID)
+	if !ok {
+		respond.RespondWithError(w, http.StatusUnauthorized, "missing auth context", nil)
 		return
 	}
 
-	if len(params.Body) > maxLen {
-		respond.RespondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
+	var params parameters
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		respond.RespondWithError(w, http.StatusBadRequest, "couldn't decode JSON", err)
+		return
+	}
+
+	if len(params.Body) == 0 || len(params.Body) > maxLen {
+		respond.RespondWithError(w, http.StatusBadRequest, "chirp body length invalid", nil)
 		return
 	}
 
 	chirpParams := database.CreateChirpParams{
 		Body:   params.Body,
-		UserID: params.UserID,
+		UserID: uid,
 	}
-
 	chirp, err := cfg.DB.CreateChirp(r.Context(), chirpParams)
 	if err != nil {
-		respond.RespondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
+		respond.RespondWithError(w, http.StatusInternalServerError, "couldn't create chirp", err)
 		return
 	}
 
-	chirpResponse := response{
-		Chirp: mapChirp(chirp),
-	}
-
-	respond.RespondWithJSON(w, http.StatusCreated, chirpResponse)
-
+	respond.RespondWithJSON(w, http.StatusCreated, response{mapChirp(chirp)})
 }
 
 func mapChirp(src database.Chirp) Chirp {

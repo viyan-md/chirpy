@@ -22,10 +22,16 @@ func main() {
 		log.Fatal("DB_URL must be set")
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT secret must be set")
+	}
+
 	dbConn, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %s", err)
 	}
+
 	dbQueries := database.New(dbConn)
 
 	platform := os.Getenv("PLATFORM")
@@ -39,6 +45,7 @@ func main() {
 	apiCfg := api.APIConfig{
 		FileserverHits: atomic.Int32{},
 		DB:             dbQueries,
+		JWTSecret:      jwtSecret,
 	}
 
 	fsHandler := apiCfg.MiddlewareMetricsInc(http.FileServer(http.Dir(root)))
@@ -49,7 +56,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrix)
 	mux.HandleFunc("POST /admin/reset", apiCfg.HandleMetrixReset)
 	mux.HandleFunc("POST /api/users", apiCfg.HandleAddUser)
-	mux.HandleFunc("POST /api/chirps", apiCfg.HandleAddChirp)
+	mux.Handle("POST /api/chirps", apiCfg.MiddlewareAuth(http.HandlerFunc(apiCfg.HandleAddChirp)))
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
 	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
