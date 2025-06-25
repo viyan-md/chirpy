@@ -39,6 +39,11 @@ func main() {
 		log.Fatal("PLATFORM must be set")
 	}
 
+	polkaAPIKey := os.Getenv("POLKA_KEY")
+	if polkaAPIKey == "" {
+		log.Fatal("API key must be set")
+	}
+
 	const root = "assets"
 	const port = "8080"
 
@@ -46,6 +51,7 @@ func main() {
 		FileserverHits: atomic.Int32{},
 		DB:             dbQueries,
 		JWTSecret:      jwtSecret,
+		API_Key:        polkaAPIKey,
 	}
 
 	fsHandler := apiCfg.MiddlewareMetricsInc(http.FileServer(http.Dir(root)))
@@ -60,6 +66,11 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
 	mux.HandleFunc("POST /api/login", apiCfg.HandleLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.HandleRefreshToken)
+	mux.HandleFunc("POST /api/revoke", apiCfg.HandleRevokeRefreshToken)
+	mux.HandleFunc("PUT /api/users", apiCfg.HandleChangeCredentials)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.HandleDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.HandleUpgradeUserToRed)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

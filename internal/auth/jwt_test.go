@@ -2,7 +2,6 @@ package auth
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,7 +11,7 @@ const testSecret = "super-secret-dev-key"
 func TestJWT_HappyPath(t *testing.T) {
 	uid := uuid.New()
 
-	tok, err := MakeJWT(uid, testSecret, time.Hour)
+	tok, err := MakeJWT(uid, testSecret)
 	if err != nil {
 		t.Fatalf("MakeJWT returned err: %v", err)
 	}
@@ -29,7 +28,7 @@ func TestJWT_HappyPath(t *testing.T) {
 func TestJWT_Expired(t *testing.T) {
 	uid := uuid.New()
 
-	tok, _ := MakeJWT(uid, testSecret, -time.Minute)
+	tok, _ := MakeJWT(uid, testSecret)
 
 	if _, err := ValidateJWT(tok, testSecret); err == nil {
 		t.Fatalf("expected error for expired token, got nil")
@@ -39,7 +38,7 @@ func TestJWT_Expired(t *testing.T) {
 func TestJWT_WrongSecret(t *testing.T) {
 	uid := uuid.New()
 
-	tok, _ := MakeJWT(uid, testSecret, time.Hour)
+	tok, _ := MakeJWT(uid, testSecret)
 
 	if _, err := ValidateJWT(tok, "wrong-secret"); err == nil {
 		t.Fatalf("expected error for wrong secret, got nil")

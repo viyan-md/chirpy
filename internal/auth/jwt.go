@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -14,14 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeJWT(userID uuid.UUID, secret string, expiresIn time.Duration) (string, error) {
-	log.Printf("Expires in %v", expiresIn)
+func MakeJWT(userID uuid.UUID, secret string) (string, error) {
 	now := time.Now().UTC()
 
 	claims := jwt.RegisteredClaims{
 		Issuer:    "chirpy",
 		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(expiresIn)),
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
 		Subject:   userID.String(),
 	}
 

@@ -18,13 +18,13 @@ type TokenResponse struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *APIConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type response struct {
@@ -50,7 +50,7 @@ func (cfg *APIConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(dbuser.ID, cfg.JWTSecret, time.Hour)
+	token, err := auth.MakeJWT(dbuser.ID, cfg.JWTSecret)
 	if err != nil {
 		respond.RespondWithError(w, http.StatusInternalServerError, "couldn't create token", err)
 	}
@@ -67,5 +67,5 @@ func (cfg *APIConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respond.RespondWithJSON(w, http.StatusOK, response{TokenResponse{Id: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email, Token: token, RefreshToken: refreshToken}})
+	respond.RespondWithJSON(w, http.StatusOK, response{TokenResponse{Id: dbuser.ID, CreatedAt: dbuser.CreatedAt, UpdatedAt: dbuser.UpdatedAt, Email: dbuser.Email, Token: token, RefreshToken: refreshToken, IsChirpyRed: dbuser.IsChirpyRed}})
 }

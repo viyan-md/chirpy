@@ -1,6 +1,8 @@
 package api
 
 import (
+	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 
@@ -23,12 +25,15 @@ func (cfg *APIConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 		Chirp
 	}
 
-	dbChirp, err := cfg.DB.GetChirp(r.Context(), chirpID)
+	chirp, err := cfg.DB.GetChirp(r.Context(), chirpID)
 	if err != nil {
-		log.Printf("DB: %v", err)
-		respond.RespondWithError(w, http.StatusInternalServerError, "couldn't load chirp", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			respond.RespondWithError(w, http.StatusNotFound, "chirp not found", nil)
+		} else {
+			respond.RespondWithError(w, http.StatusInternalServerError, "couldn't load chirp", err)
+		}
 		return
 	}
 
-	respond.RespondWithJSON(w, http.StatusOK, response{Chirp: mapChirp(dbChirp)}.Chirp)
+	respond.RespondWithJSON(w, http.StatusOK, response{Chirp: mapChirp(chirp)}.Chirp)
 }
